@@ -1,0 +1,12 @@
+python-dotenv
+openai
+mem0ai
+fastapi 
+uvicorn
+sqlalchemy
+pydantic
+alembic
+pytest 
+httpx
+pytest-asyncio
+gunicorn

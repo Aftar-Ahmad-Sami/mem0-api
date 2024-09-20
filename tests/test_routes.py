@@ -1,11 +1,23 @@
 import pytest
+import os
 from fastapi.testclient import TestClient
 from app.main import app
+from dotenv import load_dotenv
+
+load_dotenv()
 
 client = TestClient(app)
 
+API_KEY = os.getenv("X_API_KEY")  # Replace with your actual API key
+
 @pytest.fixture(scope="module")
 def test_client():
+    """
+    Fixture to create a TestClient instance for the FastAPI app.
+
+    Returns:
+        TestClient: The test client used to make requests to the FastAPI application.
+    """
     return TestClient(app)
 
 # Test the root endpoint
@@ -33,11 +45,11 @@ def test_add_memory(test_client):
     Test the /api/add endpoint for adding a memory.
 
     Args:
-        test_client (FlaskClient): The test client to simulate HTTP requests.
+        test_client (TestClient): The test client to simulate HTTP requests.
 
     Test Steps:
     1. Define the data payload with a query and user_id.
-    2. Send a POST request to the /api/add endpoint with the data payload.
+    2. Send a POST request to the /api/add endpoint with the data payload and authentication headers.
     3. Print the JSON response for debugging purposes.
     4. Assert that the response status code is 200.
     5. Assert that the response contains a JSON body.
@@ -47,7 +59,8 @@ def test_add_memory(test_client):
     - The response should contain a JSON body.
     """
     data = {"query": "Test text", "user_id": "user_123"}
-    response = test_client.post("/api/add", json=data)
+    headers = {"x-api-key": API_KEY}
+    response = test_client.post("/api/add", json=data, headers=headers)
     print(response.json())
     assert response.status_code == 200
     assert response.json()
@@ -62,15 +75,17 @@ def test_search_memory(test_client):
     and that the response contains a JSON body.
 
     Args:
-        test_client (FlaskClient): The test client used to make requests to the API.
+        test_client (TestClient): The test client used to make requests to the API.
 
     Asserts:
         The response status code is 200.
         The response contains a JSON body.
     """
+    headers = {"x-api-key": API_KEY}
     response = test_client.post(
         "/api/search",
-        json={"query": "Test text", "user_id": "user_123"}
+        json={"query": "Test text", "user_id": "user_123"},
+        headers=headers
     )
     assert response.status_code == 200
     assert response.json()
@@ -90,6 +105,7 @@ def test_delete_all_memory(test_client):
         The response status code is 200.
         The response JSON contains {"message": "All texts deleted successfully"}.
     """
-    response = test_client.delete("/api/delete_all", params={"user_id": "user_123"})
+    headers = {"x-api-key": API_KEY}
+    response = test_client.delete("/api/delete_all", params={"user_id": "user_123"}, headers=headers)
     assert response.status_code == 200
     assert response.json() == {"message": "All texts deleted successfully"}

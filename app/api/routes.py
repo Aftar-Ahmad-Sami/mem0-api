@@ -1,17 +1,18 @@
 import asyncio
+from app.core import auth
 from fastapi import APIRouter, HTTPException
 from app.models.request_models import QueryRequest
 from app.models.response_models import AddQueryResponse, QueryResponse
 from app.models.user_models import UserRequest
 from app.core.memory_manager import memory
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models.response_models import QueryResponse, MemoryItem, AddMemoryItem, RelationItem
 from app.core.memory_manager import memory
 import concurrent.futures
 
 # Initialize the router and logger
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(auth.validate_api_key)])
 logger = logging.getLogger(__name__)
 
 def add_memory_blocking(query: str, user_id: str):
@@ -76,9 +77,12 @@ async def add_memory(request: QueryRequest):
         AddQueryResponse: The response containing added memory items and relations.
     """
     try:
+        # Use ThreadPoolExecutor to run blocking code in a separate thread
         with concurrent.futures.ThreadPoolExecutor() as executor:
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(executor, add_memory_blocking, request.query, request.user_id)
+        
+        # Convert results to response model
         return AddQueryResponse(
             results=[AddMemoryItem(**item) for item in results.get('results', [])],
             relations=[RelationItem(**relation) for relation in results.get('relations', [])]
@@ -99,9 +103,12 @@ async def search_memory(request: QueryRequest):
         QueryResponse: The response containing search results and relations.
     """
     try:
+        # Use ThreadPoolExecutor to run blocking code in a separate thread
         with concurrent.futures.ThreadPoolExecutor() as executor:
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(executor, search_memory_blocking, request.query, request.user_id)
+        
+        # Convert results to response model
         return QueryResponse(
             results=[MemoryItem(**item) for item in results.get('results', [])],
             relations=[RelationItem(**relation) for relation in results.get('relations', [])]
@@ -124,12 +131,12 @@ async def get_all_memory(request: UserRequest):
     try:
         user_id = request.user_id
 
-        # Run blocking code in a separate thread
+        # Use ThreadPoolExecutor to run blocking code in a separate thread
         with concurrent.futures.ThreadPoolExecutor() as executor:
             loop = asyncio.get_event_loop()
             results = await loop.run_in_executor(executor, fetch_all_memory_blocking, user_id)
 
-        # Ensure results is in the format expected by QueryResponse
+        # Convert results to response model
         return QueryResponse(
             results=[MemoryItem(**item) for item in results.get('results', [])],
             relations=[RelationItem(**relation) for relation in results.get('relations', [])]
@@ -150,9 +157,12 @@ async def delete_all_memory(user_id: str):
         dict: A message indicating successful deletion.
     """
     try:
+        # Use ThreadPoolExecutor to run blocking code in a separate thread
         with concurrent.futures.ThreadPoolExecutor() as executor:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(executor, delete_all_memory_blocking, user_id)
+        
+        # Return success message
         return {"message": "All texts deleted successfully"}
     except Exception as e:
         logger.error(f"Error in /delete_all endpoint: {e}", exc_info=True)
